@@ -1,10 +1,11 @@
-use std::io;
-use std::io::prelude::*;
+extern crate guessing_game;
+
+use guessing_game::Difficulty;
+use guessing_game::Game;
 
 fn main(){
-    print!("Enter your guess: ");
-    io::stdout().flush().unwrap();
-    let mut guess = String::new();
-    io::stdin().read_line(&mut guess).expect("Failed to read line");
-    println!("You guessed: {}", guess);
+    guessing_game::welcome();
+    guessing_game::explain_rules();
+    let game = Game::new(Difficulty::Easy);
+    guessing_game::run(game);
 }
