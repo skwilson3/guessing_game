@@ -62,9 +62,10 @@ pub fn explain_rules() {
     println!("");
 }
 
-pub fn run(game: Game) {
-
-    for ctr in 0..game.guesses_left {
+pub fn run<'a>(game: Game) {
+    let guesses_left = game.guesses_left;
+    let mut ctr = 0;
+    while ctr < guesses_left {
 
         println!("Guesses left: {}", game.guesses_left-ctr);
 
@@ -100,6 +101,7 @@ pub fn run(game: Game) {
                 return;
             }
         }
+        ctr+=1;
     }
 
     println!("Game Over!");
