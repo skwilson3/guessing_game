@@ -17,7 +17,8 @@ pub struct Game {
 }
 
 impl Game{
-    pub fn new(diff: Difficulty) -> Game {
+    pub fn new() -> Game {
+        let diff = get_difficulty();
         Game{ secret_number: gen_secret_number(diff), guesses_left: 10 }
     }
 }
@@ -69,7 +70,7 @@ pub fn explain_difficulties() {
     println!("\t3. Hard   -- 1-100");
 }
 
-pub fn get_difficulty() -> Difficulty{
+fn get_difficulty() -> Difficulty{
     let input: String = match get_input("Please enter difficulty (1-3) [default: Easy]: "){
         Ok(s) => s,
         Err(e) => {
