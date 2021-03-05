@@ -56,13 +56,49 @@ pub fn welcome() {
 
 pub fn explain_rules() {
     println!("The object of this game is to guess the secret");
-    println!("number between 1 and 100. The computer will tell");
-    println!("if your guess is too high or too low and then");
-    println!("you can guess again!");
-    println!("");
+    println!("number. The number will be within some range.");
+    println!("The harder the game, the larger the range.");
+    println!("The computer will tell if your guess is too");
+    println!("high or too low and then you can guess again!\n");
 }
 
-pub fn run<'a>(game: Game) {
+pub fn explain_difficulties() {
+    println!("The following difficulties are availaible.");
+    println!("\t1. Easy   -- 1-10");
+    println!("\t2. Medium -- 1-50");
+    println!("\t3. Hard   -- 1-100");
+}
+
+pub fn get_difficulty() -> Difficulty{
+    let input: String = match get_input("Please enter difficulty (1-3) [default: Easy]: "){
+        Ok(s) => s,
+        Err(e) => {
+            println!("{:#}",e);
+            println!("Defaulting to Easy.");
+            String::new()
+        }
+    };
+    let num: u32 = match input.trim().parse() {
+        Ok(n) => n,
+        Err(_) => 1,
+    };
+    match num {
+        2 => {
+            println!("Medium difficulty selected.\n");
+            return Difficulty::Medium
+        },
+        3 => {
+            println!("Hard difficulty selected.\n");
+            return Difficulty::Hard
+        },
+        _ => {
+            println!("Easy difficulty selected.\n");
+            return Difficulty::Easy
+        }
+    }
+}
+
+pub fn run(game: Game) {
     let guesses_left = game.guesses_left;
     let mut ctr = 0;
     while ctr < guesses_left {

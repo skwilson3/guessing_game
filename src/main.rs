@@ -6,6 +6,8 @@ use guessing_game::Game;
 fn main(){
     guessing_game::welcome();
     guessing_game::explain_rules();
-    let game = Game::new(Difficulty::Easy);
+    guessing_game::explain_difficulties();
+    let diff = guessing_game::get_difficulty();
+    let game = Game::new(diff);
     guessing_game::run(game);
 }
