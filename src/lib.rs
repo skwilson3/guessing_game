@@ -2,13 +2,59 @@ pub mod utils {
     use std::io;
     use std::io::prelude::*;
 
-    pub fn get_input(prompt: &str) -> Result<String, io::Error>{
+    pub fn _get_input(prompt: &str) -> Result<String, io::Error>{
         print!("{}",prompt);
         io::stdout().flush().unwrap();
         let mut guess = String::new();
         io::stdin().read_line(&mut guess)?;
         Ok(guess)
     }
+
+    pub fn get_input(prompt: &str) -> String {
+        loop {
+            match _get_input(prompt) {
+                Ok(s) => return s,
+                Err(e) => {
+                    println!("{:#}",e);
+                    continue
+                }
+            }
+        }
+    }
+
+    pub fn input_and_validate(prompt: &str, allowed_inputs: Vec<&str>, default: Option<String>) -> String {
+        loop {
+            let input = get_input(prompt);
+
+            if allowed_inputs.contains(&input.trim()) {
+                return String::from(input)
+            } else {
+                if let Some(s) = default {
+                    return s
+                } else {
+                    println!("Invalid input.");
+                }
+            }
+        };
+    }
+
+    /*
+    pub fn input_and_validate_fn(prompt: &str, is_allowed: fn(&str) -> bool, default: Option<String>) -> String {
+        loop {
+            let input = get_input(prompt);
+
+            if is_allowed(&input) {
+                return input
+            } else {
+                if let Some(s) = default {
+                    return s
+                } else {
+                    println!("Invalid input.");
+                }
+            }
+        }
+    }
+    */
 }
 
 
@@ -18,6 +64,8 @@ pub mod game{
     use rand::Rng;
 
     use crate::utils::get_input;
+
+    use crate::utils;
 
     pub enum Difficulty {
         Easy,
@@ -77,18 +125,12 @@ pub mod game{
     }
 
     fn get_difficulty() -> Difficulty{
-        let input: String = match get_input("Please enter difficulty (1-3) [default: Easy]: "){
-            Ok(s) => s,
-            Err(e) => {
-                println!("{:#}",e);
-                println!("Defaulting to Easy.");
-                String::new()
-            }
-        };
-        let num: u32 = match input.trim().parse() {
-            Ok(n) => n,
-            Err(_) => 1,
-        };
+        
+        let allowed_inputs= vec!["1","2","3"];
+        let input = utils::input_and_validate("Please enter difficulty (1-3) [default: Easy]: ", allowed_inputs, Some(String::from("1")));
+
+        let num = input.trim().parse().unwrap();
+
         match num {
             2 => {
                 println!("Medium difficulty selected.\n");
@@ -101,7 +143,7 @@ pub mod game{
             _ => {
                 println!("Easy difficulty selected.\n");
                 return Difficulty::Easy
-            }
+            },
         }
     }
 
@@ -111,19 +153,11 @@ pub mod game{
 
             println!("Guesses left: {}", game.guesses_left-ctr);
 
-            let guess = match get_input("Enter your guess: ") {
-                Ok(s) => {
-                    if s.to_lowercase()=="quit" {
-                        break;
-                    } else {
-                        s
-                    }
-                },
-                Err(e) => {
-                    println!("{:#}", e);
-                    continue;
-                },
-            };
+            let guess = get_input("Enter your guess: ");
+
+            if guess == String::from("quit") {
+                break
+            }
 
             println!("You guessed: {}", guess);
 
@@ -171,30 +205,8 @@ pub mod instance {
     }
 
     fn play_again() -> bool {
-        loop {
-            let input = match utils::get_input("Play again? (Y/n): ") {
-                Ok(s) => s,
-                Err(e) => {
-                    println!("{:#}",e);
-                    continue
-                }
-            };
-            
-            let response = match input.chars().next() {
-                Some(c) => c,
-                None => {
-                    println!("Got empty input.");
-                    continue
-                }
-            };
-
-            if response == 'y' {
-                return true
-            } else if response == 'n' {
-                return false
-            } else {
-                println!("Invalid input.");
-            }
-        }
+        let allowed_inputs = vec!["y","Y","n","N"];
+        let input: Vec<char> = utils::input_and_validate("Play again? (Y/n): ", allowed_inputs, None).chars().collect();
+        return input[0] == 'y'
     }
 }
