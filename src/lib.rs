@@ -28,27 +28,29 @@ pub mod utils {
 
             if allowed_inputs.contains(&&input.to_lowercase()[..]) {
                 return String::from(input)
-            } else {
-                if let Some(s) = default {
-                    return s
-                } else {
-                    println!("Invalid input.");
-                }
-            }
-        };
-    }
-
-    pub fn input_and_validate_fn(prompt: &str, is_allowed: fn(&str) -> bool, default: Option<String>) -> String {
-        loop {
-            let input = get_input(prompt);
-
-            if is_allowed(&input) {
-                return input
             } else if let Some(s) = default {
                 return s
             } else {
                 println!("Invalid input.");
             }
+        };
+    }
+
+    pub fn input_and_validate_fn<F>(prompt: &str, is_allowed: F, default: Option<String>) -> String where F: Fn(&str) -> Result<String, io::Error>{
+        loop {
+            let input = get_input(prompt);
+
+            match is_allowed(&input) {
+                Ok(s) => return s,
+                Err(e) => {
+                    if let Some(s) = default {
+                        return s
+                    } else {
+                        println!("{:#}",e);
+                        continue
+                    }
+                }
+            };
         }
     }
 }
@@ -57,6 +59,7 @@ pub mod game{
 
     use rand::Rng;
     use std::cmp::Ordering;
+    use std::io;
     
     use crate::utils;
 
@@ -81,6 +84,7 @@ pub mod game{
         }
     }
 
+    #[derive(Copy, Clone)]
     pub struct Game {
         pub difficulty: Difficulty,
         pub secret_number: u32,
@@ -91,6 +95,48 @@ pub mod game{
         pub fn new() -> Game {
             let diff = get_difficulty();
             Game{ difficulty: diff, secret_number: diff.gen_secret_number(), guesses_left: 10,  }
+        }
+
+        pub fn allowed_guess(self, guess: &str) -> Result<String, io::Error> {
+            match guess.chars().all(|x| x.is_numeric()) {
+                true => {
+                    match guess.parse::<u32>().unwrap().cmp(&self.difficulty.max_num()) {
+                        Ordering::Less | Ordering::Equal => Ok(String::from(guess)),
+                        Ordering::Greater => Err(io::Error::new(io::ErrorKind::InvalidInput, "Guess is outside the range of possible numbers.")),
+                    }
+                },
+                false => match guess {
+                    "quit" => Ok(String::from(guess)),
+                    _ => Err(io::Error::new(io::ErrorKind::InvalidInput,"I don't know what that means. Please enter a number."))
+                }
+            }
+        }
+
+        pub fn run(self) -> Option<()> {
+            for ctr in 0..self.guesses_left {
+    
+                println!("Guesses left: {}", self.guesses_left-ctr);
+    
+                let guess = utils::input_and_validate_fn("Enter your guess: ", |x| self.allowed_guess(x), None);
+    
+                if guess == String::from("quit") {
+                    return None
+                }
+    
+                let guess: u32 = guess.trim().parse().unwrap();
+    
+                match guess.cmp(&self.secret_number) {
+                    Ordering::Less => println!("Too small!\n"),
+                    Ordering::Greater => println!("Too big!\n"),
+                    Ordering::Equal => {
+                        println!("You win!");
+                        return Some(())
+                    }
+                }
+            }
+    
+            println!("Game Over!");
+            return Some(())
         }
     }
 
@@ -145,41 +191,7 @@ pub mod game{
                 return Difficulty::Easy
             },
         }
-    }
-
-    fn allowed_guess(guess: &str) -> bool {
-        match guess.chars().next() {
-            Some(c) => return c.is_numeric(),
-            None => return false,
-        }
-    }
-
-    pub fn run(game: Game) -> Option<()> {
-        for ctr in 0..game.guesses_left {
-
-            println!("Guesses left: {}", game.guesses_left-ctr);
-
-            let guess = utils::input_and_validate_fn("Enter your guess: ", |x| (allowed_guess(x) | (x.trim()=="quit")), None);
-
-            if guess == String::from("quit") {
-                return None
-            }
-
-            let guess: u32 = guess.trim().parse().unwrap();
-
-            match guess.cmp(&game.secret_number) {
-                Ordering::Less => println!("Too small!\n"),
-                Ordering::Greater => println!("Too big!\n"),
-                Ordering::Equal => {
-                    println!("You win!");
-                    return Some(())
-                }
-            }
-        }
-
-        println!("Game Over!");
-        return Some(())
-    }
+    } 
 }
 
 pub mod instance {
@@ -195,7 +207,7 @@ pub mod instance {
         while again {
             // Play the game
             current_game = game::Game::new();
-            if let None = game::run(current_game) {
+            if let None = current_game.run() {
                 break
             }
 
