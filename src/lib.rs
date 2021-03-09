@@ -13,7 +13,7 @@ pub mod utils {
     pub fn get_input(prompt: &str) -> String {
         loop {
             match _get_input(prompt) {
-                Ok(s) => return s,
+                Ok(s) => return String::from(s.trim()),
                 Err(e) => {
                     println!("{:#}",e);
                     continue
@@ -26,7 +26,7 @@ pub mod utils {
         loop {
             let input = get_input(prompt);
 
-            if allowed_inputs.contains(&input.trim()) {
+            if allowed_inputs.contains(&&input.to_lowercase()[..]) {
                 return String::from(input)
             } else {
                 if let Some(s) = default {
@@ -38,42 +38,51 @@ pub mod utils {
         };
     }
 
-    /*
     pub fn input_and_validate_fn(prompt: &str, is_allowed: fn(&str) -> bool, default: Option<String>) -> String {
         loop {
             let input = get_input(prompt);
 
             if is_allowed(&input) {
                 return input
+            } else if let Some(s) = default {
+                return s
             } else {
-                if let Some(s) = default {
-                    return s
-                } else {
-                    println!("Invalid input.");
-                }
+                println!("Invalid input.");
             }
         }
     }
-    */
 }
-
 
 pub mod game{
 
-    use std::cmp::Ordering;
     use rand::Rng;
-
-    use crate::utils::get_input;
-
+    use std::cmp::Ordering;
+    
     use crate::utils;
 
+    #[derive(Copy, Clone)]
     pub enum Difficulty {
         Easy,
         Medium,
         Hard,
     }
 
+    impl Difficulty {
+        pub fn max_num(self) -> u32 {
+            match self {
+                Difficulty::Easy => 10,
+                Difficulty::Medium => 50,
+                Difficulty::Hard => 100,
+            }
+        }
+
+        pub fn gen_secret_number(self) -> u32 {
+            rand::thread_rng().gen_range(1..=self.max_num())
+        }
+    }
+
     pub struct Game {
+        pub difficulty: Difficulty,
         pub secret_number: u32,
         pub guesses_left: u32,
     }
@@ -81,17 +90,8 @@ pub mod game{
     impl Game{
         pub fn new() -> Game {
             let diff = get_difficulty();
-            Game{ secret_number: gen_secret_number(diff), guesses_left: 10 }
+            Game{ difficulty: diff, secret_number: diff.gen_secret_number(), guesses_left: 10,  }
         }
-    }
-
-    fn gen_secret_number(diff: Difficulty) -> u32 {
-        let max_num = match diff {
-            Difficulty::Easy => 10,
-            Difficulty::Medium => 50,
-            Difficulty::Hard => 100,
-        };
-        rand::thread_rng().gen_range(1..=max_num)
     }
 
     pub fn welcome() {
@@ -129,7 +129,7 @@ pub mod game{
         let allowed_inputs= vec!["1","2","3"];
         let input = utils::input_and_validate("Please enter difficulty (1-3) [default: Easy]: ", allowed_inputs, Some(String::from("1")));
 
-        let num = input.trim().parse().unwrap();
+        let num = input.parse().unwrap();
 
         match num {
             2 => {
@@ -147,40 +147,38 @@ pub mod game{
         }
     }
 
-    pub fn run(game: Game) {
-        let mut ctr = 0;
-        while ctr < game.guesses_left {
+    fn allowed_guess(guess: &str) -> bool {
+        match guess.chars().next() {
+            Some(c) => return c.is_numeric(),
+            None => return false,
+        }
+    }
+
+    pub fn run(game: Game) -> Option<()> {
+        for ctr in 0..game.guesses_left {
 
             println!("Guesses left: {}", game.guesses_left-ctr);
 
-            let guess = get_input("Enter your guess: ");
+            let guess = utils::input_and_validate_fn("Enter your guess: ", |x| (allowed_guess(x) | (x.trim()=="quit")), None);
 
             if guess == String::from("quit") {
-                break
+                return None
             }
 
-            println!("You guessed: {}", guess);
-
-            let guess: u32 = match guess.trim().parse() {
-                Ok(n) => n,
-                Err(e) => {
-                    println!("{:#}", e);
-                    continue;
-                },
-            };
+            let guess: u32 = guess.trim().parse().unwrap();
 
             match guess.cmp(&game.secret_number) {
                 Ordering::Less => println!("Too small!\n"),
                 Ordering::Greater => println!("Too big!\n"),
                 Ordering::Equal => {
                     println!("You win!");
-                    return;
+                    return Some(())
                 }
             }
-            ctr+=1;
         }
 
         println!("Game Over!");
+        return Some(())
     }
 }
 
@@ -197,7 +195,9 @@ pub mod instance {
         while again {
             // Play the game
             current_game = game::Game::new();
-            game::run(current_game);
+            if let None = game::run(current_game) {
+                break
+            }
 
             again = play_again();
         }
@@ -205,7 +205,7 @@ pub mod instance {
     }
 
     fn play_again() -> bool {
-        let allowed_inputs = vec!["y","Y","n","N"];
+        let allowed_inputs = vec!["y","n","yes","no"];
         let input: Vec<char> = utils::input_and_validate("Play again? (Y/n): ", allowed_inputs, None).chars().collect();
         return input[0] == 'y'
     }
